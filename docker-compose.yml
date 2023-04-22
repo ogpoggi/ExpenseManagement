@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+    backend:
+        build: 
+            context: ./backend
+            dockerfile: Dockerfile.dev
+        volumes:
+            - ./backend/:/var/www
+        expose: 
+            - 9000
+        environment:
+            - DB_HOST=postgresql
+            - DB_CONNECTION=pgsql
+            - DB_PORT=5432
+            - DB_DATABASE=tf_sample
+            - DB_USERNAME=root
+            - DB_PASSWORD=1234
+        tty: true
+        networks:
+            - tfsample
+
+    postgresql:
+        image: postgres:13.3
+        volumes:
+            - postgresql:/var/lib/postgresql/data
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_DB=tf_sample
+            - POSTGRES_USER=root
+            - POSTGRES_PASSWORD=1234
+        networks:
+            - tfsample
+
+    nginx:
+        build:
+            context: .
+            dockerfile: ./nginx/Dockerfile
+        depends_on:
+            - backend
+        restart: unless-stopped
+        tty: true
+        ports: 
+            - 8000:80
+        volumes: 
+            - ./backend/public/:/var/www/public
+            - ./nginx/templates/:/etc/nginx/templates/
+        environment:
+          - BACKEND_URL=backend
+        networks:
+            - tfsample
+    
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile.dev
+        volumes:
+            - ./frontend:/app
+            - /app/node_modules
+            - /app/.nuxt
+        ports:
+            - 3000:3000
+        networks:
+            - tfsample
+
+volumes:
+    postgresql:
+        driver: local
+
+networks:
+    tfsample:
+        driver: bridge
